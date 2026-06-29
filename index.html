@@ -3,78 +3,566 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Scrum Poker Planning</title>
-  <link rel="stylesheet" href="style.css">
+  <title>Scrum Poker Planning v2</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #4f46e5; --primary-dark: #4338ca; --success: #22c55e;
+      --bg: #f8fafc; --card-bg: #ffffff; --text: #1e293b; --text-light: #64748b; --border: #e2e8f0;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    .hidden { display: none !important; }
+    
+    #join-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .join-card { background: var(--card-bg); padding: 3rem; border-radius: 1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; max-width: 400px; width: 90%; }
+    .join-card h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
+    .join-card p { color: var(--text-light); margin-bottom: 2rem; }
+    .version-badge { font-size: 0.75rem; background: var(--primary); color: white; padding: 0.2rem 0.5rem; border-radius: 0.25rem; margin-left: 0.5rem; vertical-align: middle; }
+    #join-form { display: flex; flex-direction: column; gap: 1rem; }
+    #join-form input { padding: 0.875rem 1rem; border: 2px solid var(--border); border-radius: 0.5rem; font-size: 1rem; }
+    #join-form input:focus { outline: none; border-color: var(--primary); }
+    #join-form button { padding: 0.875rem; background: var(--primary); color: white; border: none; border-radius: 0.5rem; font-size: 1rem; font-weight: 600; cursor: pointer; }
+    #join-form button:hover { background: var(--primary-dark); }
+    
+    header { background: var(--card-bg); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 0.5rem; }
+    header h1 { font-size: 1.5rem; }
+    .room-info { display: flex; align-items: center; gap: 0.5rem; color: var(--text-light); }
+    
+    main { padding: 2rem; max-width: 1100px; margin: 0 auto; }
+    section { margin-bottom: 2rem; }
+    section h2 { font-size: 1rem; color: var(--text-light); margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    
+    .story-section { text-align: center; }
+    #story-input { width: 100%; max-width: 500px; padding: 1rem; border: 2px solid var(--border); border-radius: 0.5rem; font-size: 1.1rem; text-align: center; }
+    #story-input:focus { outline: none; border-color: var(--primary); }
+    .current-story { margin-top: 0.5rem; font-size: 1.25rem; font-weight: 600; color: var(--primary); }
+    
+    .players-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 1rem; }
+    .player-card { background: var(--card-bg); border-radius: 0.75rem; padding: 1.25rem; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border: 2px solid transparent; }
+    .player-card.voted { border-color: var(--success); }
+    .player-card.is-you { background: #f0f9ff; }
+    .player-name { font-weight: 600; margin-bottom: 0.5rem; overflow: hidden; text-overflow: ellipsis; }
+    .player-vote { font-size: 1.75rem; font-weight: 700; color: var(--primary); min-height: 2.5rem; display: flex; align-items: center; justify-content: center; }
+    .player-vote.hidden-vote { color: var(--success); }
+    
+    .cards { display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: center; }
+    .card { width: 60px; height: 85px; background: var(--card-bg); border: 3px solid var(--border); border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; font-weight: 700; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .card:hover { transform: translateY(-5px); border-color: var(--primary); }
+    .card.selected { background: var(--primary); color: white; border-color: var(--primary); transform: translateY(-5px); }
+    .card.disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    
+    .controls-section { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+    .controls-section button { padding: 1rem 2rem; border: none; border-radius: 0.5rem; font-size: 1rem; font-weight: 600; cursor: pointer; }
+    .btn-reveal { background: var(--success); color: white; }
+    .btn-reset { background: var(--text-light); color: white; }
+    .btn-export { background: #0ea5e9; color: white; }
+    
+    .results-section { background: var(--card-bg); padding: 1.5rem; border-radius: 0.75rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .results-stats { display: flex; flex-wrap: wrap; gap: 2rem; justify-content: center; }
+    .stat { text-align: center; }
+    .stat-value { font-size: 2rem; font-weight: 700; color: var(--primary); }
+    .stat-label { color: var(--text-light); font-size: 0.875rem; }
+    
+    /* History Section - NEW */
+    .history-section { background: var(--card-bg); padding: 1.5rem; border-radius: 0.75rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .history-header h2 { margin-bottom: 0; }
+    .history-count { background: var(--primary); color: white; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.875rem; }
+    .history-table { width: 100%; border-collapse: collapse; }
+    .history-table th, .history-table td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
+    .history-table th { font-weight: 600; color: var(--text-light); font-size: 0.875rem; text-transform: uppercase; }
+    .history-table tr:last-child td { border-bottom: none; }
+    .history-table .estimate { font-weight: 700; color: var(--primary); }
+    .history-table .voters { font-size: 0.85rem; color: var(--text-light); }
+    .history-empty { text-align: center; color: var(--text-light); padding: 2rem; }
+    .history-total { margin-top: 1rem; padding-top: 1rem; border-top: 2px solid var(--border); display: flex; justify-content: space-between; font-weight: 600; }
+    
+    .notifications { position: fixed; bottom: 1rem; right: 1rem; display: flex; flex-direction: column; gap: 0.5rem; z-index: 100; }
+    .notification { background: var(--text); color: white; padding: 0.75rem 1.25rem; border-radius: 0.5rem; animation: slideIn 0.3s ease; }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    
+    .connection-status { padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.8rem; }
+    .connected { background: #dcfce7; color: #166534; }
+    .disconnected { background: #fee2e2; color: #991b1b; }
+  </style>
 </head>
 <body>
   <div id="app">
-    <!-- Join Screen -->
     <div id="join-screen" class="screen">
       <div class="join-card">
-        <h1>🃏 Scrum Poker</h1>
-        <p>Planning made simple</p>
+        <h1>🃏 Scrum Poker <span class="version-badge">v2</span></h1>
+        <p>Planning made simple - now with history!</p>
         <form id="join-form">
           <input type="text" id="name-input" placeholder="Your name" required maxlength="20">
-          <input type="text" id="room-input" placeholder="Room name" required maxlength="30">
+          <input type="text" id="room-input" placeholder="Room name (share with team)" required maxlength="30">
           <button type="submit">Join Room</button>
         </form>
+        <p style="margin-top: 1.5rem; font-size: 0.85rem; color: var(--text-light);">
+          Share this file with colleagues.<br>Use the same room name to join together.
+        </p>
       </div>
     </div>
 
-    <!-- Game Screen -->
     <div id="game-screen" class="screen hidden">
       <header>
-        <h1>🃏 Scrum Poker</h1>
+        <h1>🃏 Scrum Poker <span class="version-badge">v2</span></h1>
         <div class="room-info">
           Room: <span id="room-name"></span>
-          <button id="copy-link" title="Copy invite link">📋</button>
+          <span id="connection-status" class="connection-status">Connecting...</span>
         </div>
       </header>
 
       <main>
-        <!-- Story Section -->
         <section class="story-section">
-          <input type="text" id="story-input" placeholder="Enter story/ticket to estimate...">
+          <input type="text" id="story-input" placeholder="Enter story/ticket to estimate (e.g., SEARCH-1234)...">
           <div id="current-story" class="current-story"></div>
         </section>
 
-        <!-- Players Table -->
         <section class="players-section">
           <h2>Players</h2>
           <div id="players-grid" class="players-grid"></div>
         </section>
 
-        <!-- Voting Cards -->
         <section class="voting-section">
           <h2>Your Vote</h2>
           <div id="cards" class="cards"></div>
         </section>
 
-        <!-- Controls -->
         <section class="controls-section">
           <button id="reveal-btn" class="btn-reveal">Reveal Cards</button>
           <button id="reset-btn" class="btn-reset">New Round</button>
+          <button id="export-btn" class="btn-export">Export History</button>
         </section>
 
-        <!-- Results -->
         <section id="results-section" class="results-section hidden">
           <h2>Results</h2>
           <div id="results-stats" class="results-stats"></div>
         </section>
 
-        <!-- History -->
+        <!-- History Section - NEW -->
         <section class="history-section">
-          <h2>History</h2>
-          <div id="history-list" class="history-list"></div>
+          <div class="history-header">
+            <h2>📋 Session History</h2>
+            <span id="history-count" class="history-count">0 items</span>
+          </div>
+          <div id="history-content"></div>
         </section>
       </main>
 
-      <!-- Notifications -->
       <div id="notifications" class="notifications"></div>
     </div>
   </div>
 
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="app.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <script>
+    const CARD_VALUES = ['0', '1', '2', '3', '5', '8', '13', '21', '34', '?', '☕'];
+    
+    let peer = null;
+    let connections = new Map();
+    let currentUser = null;
+    let currentRoom = null;
+    let isHost = false;
+    let gameState = { users: {}, revealed: false, currentStory: '', history: [] };
+    
+    const joinScreen = document.getElementById('join-screen');
+    const gameScreen = document.getElementById('game-screen');
+    const joinForm = document.getElementById('join-form');
+    const nameInput = document.getElementById('name-input');
+    const roomInput = document.getElementById('room-input');
+    const roomNameEl = document.getElementById('room-name');
+    const connectionStatus = document.getElementById('connection-status');
+    const storyInput = document.getElementById('story-input');
+    const currentStoryEl = document.getElementById('current-story');
+    const playersGrid = document.getElementById('players-grid');
+    const cardsEl = document.getElementById('cards');
+    const revealBtn = document.getElementById('reveal-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const exportBtn = document.getElementById('export-btn');
+    const resultsSection = document.getElementById('results-section');
+    const resultsStats = document.getElementById('results-stats');
+    const historyContent = document.getElementById('history-content');
+    const historyCount = document.getElementById('history-count');
+    const notificationsEl = document.getElementById('notifications');
+
+    function init() {
+      renderCards();
+      joinForm.addEventListener('submit', handleJoin);
+      storyInput.addEventListener('change', handleStoryChange);
+      revealBtn.addEventListener('click', handleReveal);
+      resetBtn.addEventListener('click', handleReset);
+      exportBtn.addEventListener('click', handleExport);
+    }
+
+    function handleJoin(e) {
+      e.preventDefault();
+      currentUser = nameInput.value.trim();
+      currentRoom = roomInput.value.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+      
+      if (!currentUser || !currentRoom) return;
+      
+      joinScreen.classList.add('hidden');
+      gameScreen.classList.remove('hidden');
+      roomNameEl.textContent = currentRoom;
+      
+      initPeer();
+    }
+
+    function initPeer() {
+      const oderId = `scrumpoker-${currentRoom}-${currentUser}-${Date.now()}`;
+      peer = new Peer(oderId);
+      
+      peer.on('open', (id) => {
+        updateConnectionStatus(true);
+        tryConnectToHost();
+        gameState.users[id] = { name: currentUser, vote: null, oderId: id };
+        render();
+      });
+      
+      peer.on('connection', (conn) => {
+        handleConnection(conn);
+      });
+      
+      peer.on('error', (err) => {
+        console.log('Peer error:', err.type);
+        if (err.type === 'peer-unavailable') {
+          becomeHost();
+        }
+      });
+      
+      peer.on('disconnected', () => {
+        updateConnectionStatus(false);
+        setTimeout(() => peer.reconnect(), 1000);
+      });
+    }
+
+    function tryConnectToHost() {
+      const hostId = `scrumpoker-${currentRoom}-host`;
+      const conn = peer.connect(hostId, { reliable: true });
+      
+      conn.on('open', () => {
+        handleConnection(conn);
+        conn.send({ type: 'join', name: currentUser, oderId: peer.id });
+      });
+      
+      conn.on('error', () => {
+        becomeHost();
+      });
+      
+      setTimeout(() => {
+        if (connections.size === 0) becomeHost();
+      }, 3000);
+    }
+
+    function becomeHost() {
+      if (isHost) return;
+      isHost = true;
+      
+      peer.destroy();
+      peer = new Peer(`scrumpoker-${currentRoom}-host`);
+      
+      peer.on('open', (id) => {
+        updateConnectionStatus(true);
+        gameState.users[id] = { name: currentUser, vote: null, oderId: id };
+        render();
+        showNotification('You are the host');
+      });
+      
+      peer.on('connection', handleConnection);
+      peer.on('error', (err) => console.log('Host error:', err));
+    }
+
+    function handleConnection(conn) {
+      connections.set(conn.peer, conn);
+      
+      conn.on('data', (data) => handleMessage(data, conn));
+      conn.on('close', () => {
+        connections.delete(conn.peer);
+        delete gameState.users[conn.peer];
+        render();
+        broadcastState();
+      });
+      
+      if (isHost) {
+        setTimeout(() => {
+          conn.send({ type: 'state', state: gameState });
+        }, 500);
+      }
+    }
+
+    function handleMessage(data, conn) {
+      switch(data.type) {
+        case 'join':
+          gameState.users[data.oderId] = { name: data.name, vote: null, oderId: data.oderId };
+          showNotification(`${data.name} joined`);
+          broadcastState();
+          break;
+        case 'vote':
+          if (gameState.users[data.oderId]) {
+            gameState.users[data.oderId].vote = data.vote;
+            broadcastState();
+          }
+          break;
+        case 'state':
+          gameState = data.state;
+          if (!gameState.history) gameState.history = [];
+          if (!gameState.users[peer.id]) {
+            gameState.users[peer.id] = { name: currentUser, vote: null, oderId: peer.id };
+          }
+          render();
+          break;
+        case 'reveal':
+          gameState.revealed = true;
+          broadcastState();
+          break;
+        case 'reset':
+          gameState = data.state;
+          broadcastState();
+          break;
+        case 'story':
+          gameState.currentStory = data.story;
+          broadcastState();
+          break;
+      }
+      render();
+    }
+
+    function broadcastState() {
+      const msg = { type: 'state', state: gameState };
+      connections.forEach(conn => {
+        if (conn.open) conn.send(msg);
+      });
+    }
+
+    function broadcast(msg) {
+      connections.forEach(conn => {
+        if (conn.open) conn.send(msg);
+      });
+    }
+
+    function renderCards() {
+      cardsEl.innerHTML = CARD_VALUES.map(v => `<div class="card" data-value="${v}">${v}</div>`).join('');
+      cardsEl.querySelectorAll('.card').forEach(card => {
+        card.addEventListener('click', () => {
+          if (gameState.revealed) return;
+          const vote = card.dataset.value;
+          if (gameState.users[peer.id]) {
+            gameState.users[peer.id].vote = vote;
+          }
+          broadcast({ type: 'vote', vote, oderId: peer.id });
+          render();
+        });
+      });
+    }
+
+    function render() {
+      renderPlayers();
+      renderVotingCards();
+      renderResults();
+      renderHistory();
+      if (storyInput.value !== gameState.currentStory) {
+        storyInput.value = gameState.currentStory || '';
+      }
+      currentStoryEl.textContent = gameState.currentStory || '';
+    }
+
+    function renderPlayers() {
+      const users = Object.values(gameState.users);
+      playersGrid.innerHTML = users.map(user => {
+        const isYou = user.oderId === peer?.id;
+        const hasVoted = user.vote !== null;
+        const displayVote = gameState.revealed ? (user.vote || '—') : (hasVoted ? '✓' : '—');
+        
+        return `
+          <div class="player-card ${hasVoted ? 'voted' : ''} ${isYou ? 'is-you' : ''}">
+            <div class="player-name">${escapeHtml(user.name)}${isYou ? ' (You)' : ''}</div>
+            <div class="player-vote ${!gameState.revealed && hasVoted ? 'hidden-vote' : ''}">${displayVote}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderVotingCards() {
+      const myVote = gameState.users[peer?.id]?.vote;
+      cardsEl.querySelectorAll('.card').forEach(card => {
+        card.classList.toggle('selected', card.dataset.value === myVote);
+        card.classList.toggle('disabled', gameState.revealed);
+      });
+    }
+
+    function renderResults() {
+      if (!gameState.revealed) {
+        resultsSection.classList.add('hidden');
+        return;
+      }
+      
+      const votes = Object.values(gameState.users)
+        .map(u => u.vote)
+        .filter(v => v && !isNaN(parseFloat(v)))
+        .map(v => parseFloat(v));
+      
+      if (votes.length === 0) {
+        resultsSection.classList.add('hidden');
+        return;
+      }
+      
+      resultsSection.classList.remove('hidden');
+      const avg = (votes.reduce((a, b) => a + b, 0) / votes.length).toFixed(1);
+      const min = Math.min(...votes);
+      const max = Math.max(...votes);
+      
+      resultsStats.innerHTML = `
+        <div class="stat"><div class="stat-value">${avg}</div><div class="stat-label">Average</div></div>
+        <div class="stat"><div class="stat-value">${min}</div><div class="stat-label">Min</div></div>
+        <div class="stat"><div class="stat-value">${max}</div><div class="stat-label">Max</div></div>
+      `;
+    }
+
+    function renderHistory() {
+      const history = gameState.history || [];
+      historyCount.textContent = `${history.length} item${history.length !== 1 ? 's' : ''}`;
+      
+      if (history.length === 0) {
+        historyContent.innerHTML = '<div class="history-empty">No estimates yet. Complete a round to see history.</div>';
+        return;
+      }
+      
+      const numericEstimates = history.filter(h => !isNaN(parseFloat(h.finalEstimate)));
+      const totalPoints = numericEstimates.reduce((sum, h) => sum + parseFloat(h.finalEstimate), 0);
+      
+      historyContent.innerHTML = `
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Ticket/Story</th>
+              <th>Estimate</th>
+              <th>Votes</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${history.map((item, idx) => `
+              <tr>
+                <td>${history.length - idx}</td>
+                <td><strong>${escapeHtml(item.story || 'Unnamed')}</strong></td>
+                <td class="estimate">${item.finalEstimate}</td>
+                <td class="voters">${item.votes.map(v => `${escapeHtml(v.name)}: ${v.vote}`).join(', ')}</td>
+                <td>${item.time}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        <div class="history-total">
+          <span>Total Estimated:</span>
+          <span>${totalPoints} points (${numericEstimates.length} items)</span>
+        </div>
+      `;
+    }
+
+    function handleStoryChange() {
+      gameState.currentStory = storyInput.value.trim();
+      broadcast({ type: 'story', story: gameState.currentStory });
+      render();
+    }
+
+    function handleReveal() {
+      gameState.revealed = true;
+      broadcast({ type: 'reveal' });
+      render();
+    }
+
+    function handleReset() {
+      // Save current round to history if there are votes
+      const votes = Object.values(gameState.users)
+        .filter(u => u.vote)
+        .map(u => ({ name: u.name, vote: u.vote }));
+      
+      if (votes.length > 0) {
+        const numericVotes = votes.filter(v => !isNaN(parseFloat(v.vote))).map(v => parseFloat(v.vote));
+        const avg = numericVotes.length > 0 
+          ? (numericVotes.reduce((a, b) => a + b, 0) / numericVotes.length).toFixed(1)
+          : '?';
+        
+        // Find most common vote for final estimate
+        const voteCounts = {};
+        votes.forEach(v => { voteCounts[v.vote] = (voteCounts[v.vote] || 0) + 1; });
+        const finalEstimate = Object.entries(voteCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || avg;
+        
+        const historyItem = {
+          story: gameState.currentStory || 'Unnamed story',
+          votes: votes,
+          average: avg,
+          finalEstimate: finalEstimate,
+          time: new Date().toLocaleTimeString()
+        };
+        
+        if (!gameState.history) gameState.history = [];
+        gameState.history.unshift(historyItem);
+        
+        showNotification(`Saved: ${historyItem.story} → ${finalEstimate}`);
+      }
+      
+      // Reset for new round
+      gameState.revealed = false;
+      gameState.currentStory = '';
+      Object.values(gameState.users).forEach(u => u.vote = null);
+      storyInput.value = '';
+      
+      broadcast({ type: 'reset', state: gameState });
+      render();
+    }
+
+    function handleExport() {
+      const history = gameState.history || [];
+      if (history.length === 0) {
+        showNotification('No history to export');
+        return;
+      }
+      
+      // Create CSV
+      let csv = 'Ticket/Story,Final Estimate,Average,Votes,Time\n';
+      history.forEach(item => {
+        const votes = item.votes.map(v => `${v.name}:${v.vote}`).join('; ');
+        csv += `"${item.story}",${item.finalEstimate},${item.average},"${votes}",${item.time}\n`;
+      });
+      
+      // Calculate totals
+      const numericEstimates = history.filter(h => !isNaN(parseFloat(h.finalEstimate)));
+      const totalPoints = numericEstimates.reduce((sum, h) => sum + parseFloat(h.finalEstimate), 0);
+      csv += `\nTOTAL,${totalPoints},,${history.length} items,`;
+      
+      // Download
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `scrum-poker-${currentRoom}-${new Date().toISOString().slice(0,10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      showNotification('History exported to CSV');
+    }
+
+    function updateConnectionStatus(connected) {
+      connectionStatus.textContent = connected ? 'Connected' : 'Reconnecting...';
+      connectionStatus.className = 'connection-status ' + (connected ? 'connected' : 'disconnected');
+    }
+
+    function showNotification(msg) {
+      const el = document.createElement('div');
+      el.className = 'notification';
+      el.textContent = msg;
+      notificationsEl.appendChild(el);
+      setTimeout(() => el.remove(), 3000);
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    init();
+  </script>
 </body>
 </html>
