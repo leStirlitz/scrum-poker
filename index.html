@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scrum Poker Planning</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Join Screen -->
+    <div id="join-screen" class="screen">
+      <div class="join-card">
+        <h1>🃏 Scrum Poker</h1>
+        <p>Planning made simple</p>
+        <form id="join-form">
+          <input type="text" id="name-input" placeholder="Your name" required maxlength="20">
+          <input type="text" id="room-input" placeholder="Room name" required maxlength="30">
+          <button type="submit">Join Room</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="game-screen" class="screen hidden">
+      <header>
+        <h1>🃏 Scrum Poker</h1>
+        <div class="room-info">
+          Room: <span id="room-name"></span>
+          <button id="copy-link" title="Copy invite link">📋</button>
+        </div>
+      </header>
+
+      <main>
+        <!-- Story Section -->
+        <section class="story-section">
+          <input type="text" id="story-input" placeholder="Enter story/ticket to estimate...">
+          <div id="current-story" class="current-story"></div>
+        </section>
+
+        <!-- Players Table -->
+        <section class="players-section">
+          <h2>Players</h2>
+          <div id="players-grid" class="players-grid"></div>
+        </section>
+
+        <!-- Voting Cards -->
+        <section class="voting-section">
+          <h2>Your Vote</h2>
+          <div id="cards" class="cards"></div>
+        </section>
+
+        <!-- Controls -->
+        <section class="controls-section">
+          <button id="reveal-btn" class="btn-reveal">Reveal Cards</button>
+          <button id="reset-btn" class="btn-reset">New Round</button>
+        </section>
+
+        <!-- Results -->
+        <section id="results-section" class="results-section hidden">
+          <h2>Results</h2>
+          <div id="results-stats" class="results-stats"></div>
+        </section>
+
+        <!-- History -->
+        <section class="history-section">
+          <h2>History</h2>
+          <div id="history-list" class="history-list"></div>
+        </section>
+      </main>
+
+      <!-- Notifications -->
+      <div id="notifications" class="notifications"></div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
