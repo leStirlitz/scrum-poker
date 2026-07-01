@@ -38,9 +38,9 @@
     .current-story { margin-top: 0.5rem; font-size: 1.25rem; font-weight: 600; color: var(--primary); }
     
     .players-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 1rem; }
-    .player-card { background: var(--card-bg); border-radius: 0.75rem; padding: 1.25rem; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border: 2px solid transparent; position: relative; }
-    .player-card.voted { border-color: var(--success); }
-    .player-card.is-you { background: #f0f9ff; }
+    .player-card { background: #e5e7eb; border-radius: 0.75rem; padding: 1.25rem; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border: 2px solid #d1d5db; position: relative; transition: all 0.3s ease; }
+    .player-card.voted { background: #d1fae5; border-color: #34d399; }
+    .player-card.is-you { box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.3); }
     .player-name { font-weight: 600; margin-bottom: 0.5rem; overflow: hidden; text-overflow: ellipsis; }
     .player-vote { font-size: 1.75rem; font-weight: 700; color: var(--primary); min-height: 2.5rem; display: flex; align-items: center; justify-content: center; }
     .player-vote.hidden-vote { color: var(--success); }
@@ -84,6 +84,12 @@
     .connection-status { padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.8rem; }
     .connected { background: #dcfce7; color: #166534; }
     .disconnected { background: #fee2e2; color: #991b1b; }
+    
+    .host-badge { background: #f59e0b; color: white; padding: 0.15rem 0.5rem; border-radius: 0.25rem; font-size: 0.7rem; font-weight: 600; margin-left: 0.25rem; }
+    .player-card.is-host { border-color: #f59e0b; }
+    .host-controls-note { text-align: center; color: var(--text-light); font-size: 0.875rem; margin-bottom: 1rem; font-style: italic; }
+    .btn-reveal:disabled, .btn-reset:disabled { opacity: 0.5; cursor: not-allowed; }
+    .role-badge { padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.8rem; background: #fef3c7; color: #92400e; }
   </style>
 </head>
 <body>
@@ -108,6 +114,7 @@
         <h1>🃏 Scrum Poker</h1>
         <div class="room-info">
           <span>Room: <strong id="room-name"></strong></span>
+          <span id="role-badge" class="role-badge hidden">Host</span>
           <span id="connection-status" class="connection-status">Connecting...</span>
           <button class="leave-btn" onclick="leaveRoom()">Leave</button>
         </div>
@@ -130,6 +137,7 @@
         </section>
 
         <section class="controls-section">
+          <div id="host-controls-note" class="host-controls-note hidden">Only the host can reveal cards and start new rounds</div>
           <button id="reveal-btn" class="btn-reveal">Reveal Cards</button>
           <button id="reset-btn" class="btn-reset">New Round</button>
           <button id="export-btn" class="btn-export">Export CSV</button>
@@ -178,6 +186,8 @@
     let oderId = null;
     let roomRef = null;
     let presenceRef = null;
+    let isHost = false;
+    let currentHostId = null;
 
     // DOM Elements
     const joinScreen = document.getElementById('join-screen');
@@ -200,6 +210,8 @@
     const historyContent = document.getElementById('history-content');
     const historyCountEl = document.getElementById('history-count');
     const notificationsEl = document.getElementById('notifications');
+    const roleBadge = document.getElementById('role-badge');
+    const hostControlsNote = document.getElementById('host-controls-note');
 
     function init() {
       // Check for saved session
@@ -246,22 +258,52 @@
     function setupRoom() {
       roomRef = db.ref(`rooms/${currentRoom}`);
       
-      // Add user to room
-      const userRef = roomRef.child(`users/${oderId}`);
-      userRef.set({
-        name: currentUser,
-        vote: null,
-        oderId: oderId,
-        joinedAt: firebase.database.ServerValue.TIMESTAMP
-      });
+      // Check if room exists and has a host, otherwise become host
+      roomRef.once('value', (snapshot) => {
+        const data = snapshot.val();
+        if (!data || !data.hostId) {
+          // No room or no host - become host
+          isHost = true;
+          roomRef.child('hostId').set(oderId);
+          roomRef.child('hostId').onDisconnect().remove();
+          showNotification('You are the host');
+        }
+        
+        // Add user to room
+        const userRef = roomRef.child(`users/${oderId}`);
+        userRef.set({
+          name: currentUser,
+          vote: null,
+          oderId: oderId,
+          joinedAt: firebase.database.ServerValue.TIMESTAMP
+        });
 
-      // Setup presence - remove user when they disconnect
-      userRef.onDisconnect().remove();
+        // Setup presence - remove user when they disconnect
+        userRef.onDisconnect().remove();
+      });
 
       // Listen for room changes
       roomRef.on('value', (snapshot) => {
         const data = snapshot.val() || {};
+        currentHostId = data.hostId || null;
+        
+        // Check if we're the host
+        isHost = currentHostId === oderId;
+        
+        // If no host exists and we're the oldest user, become host
+        if (!currentHostId && data.users) {
+          const users = Object.values(data.users);
+          const oldestUser = users.sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0))[0];
+          if (oldestUser && oldestUser.oderId === oderId) {
+            isHost = true;
+            roomRef.child('hostId').set(oderId);
+            roomRef.child('hostId').onDisconnect().remove();
+            showNotification('You are now the host');
+          }
+        }
+        
         renderRoom(data);
+        updateHostControls();
       });
 
       // Listen for user joins/leaves for notifications
@@ -278,6 +320,23 @@
           showNotification(`${user.name} left`);
         }
       });
+    }
+    
+    function updateHostControls() {
+      // Update role badge
+      if (isHost) {
+        roleBadge.textContent = '👑 Host';
+        roleBadge.classList.remove('hidden');
+        hostControlsNote.classList.add('hidden');
+      } else {
+        roleBadge.textContent = 'Voter';
+        roleBadge.classList.remove('hidden');
+        hostControlsNote.classList.remove('hidden');
+      }
+      
+      // Enable/disable control buttons
+      revealBtn.disabled = !isHost;
+      resetBtn.disabled = !isHost;
     }
 
     function renderRoom(data) {
@@ -311,13 +370,17 @@
 
       playersGrid.innerHTML = userList.map(user => {
         const isYou = user.oderId === oderId;
+        const isUserHost = user.oderId === currentHostId;
         const hasVoted = user.vote !== null;
         const displayVote = revealed ? (user.vote || '—') : (hasVoted ? '✓' : '—');
         
         return `
-          <div class="player-card ${hasVoted ? 'voted' : ''} ${isYou ? 'is-you' : ''}">
+          <div class="player-card ${hasVoted ? 'voted' : ''} ${isYou ? 'is-you' : ''} ${isUserHost ? 'is-host' : ''}">
             <div class="online-dot"></div>
-            <div class="player-name">${escapeHtml(user.name)}${isYou ? ' (You)' : ''}</div>
+            <div class="player-name">
+              ${escapeHtml(user.name)}${isYou ? ' (You)' : ''}
+              ${isUserHost ? '<span class="host-badge">HOST</span>' : ''}
+            </div>
             <div class="player-vote ${!revealed && hasVoted ? 'hidden-vote' : ''}">${displayVote}</div>
           </div>
         `;
@@ -423,10 +486,18 @@
     }
 
     function handleReveal() {
+      if (!isHost) {
+        showNotification('Only the host can reveal cards');
+        return;
+      }
       roomRef.child('revealed').set(true);
     }
 
     function handleReset() {
+      if (!isHost) {
+        showNotification('Only the host can start a new round');
+        return;
+      }
       roomRef.once('value', (snapshot) => {
         const data = snapshot.val() || {};
         const users = data.users || {};
