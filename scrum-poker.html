@@ -273,26 +273,37 @@
       
       peer.on('disconnected', () => {
         updateConnectionStatus(false);
-        setTimeout(() => peer.reconnect(), 1000);
+        setTimeout(() => {
+          if (!peer.destroyed) {
+            peer.reconnect();
+            // After reconnect, non-host guests should re-attempt to join the host
+            if (!isHost) {
+              setTimeout(() => tryConnectToHost(), 1000);
+            }
+          }
+        }, 1000);
       });
     }
 
     function tryConnectToHost() {
       const hostId = `scrumpoker-${currentRoom}-host`;
       const conn = peer.connect(hostId, { reliable: true });
+      let connected = false;
       
       conn.on('open', () => {
+        connected = true;
         handleConnection(conn);
         conn.send({ type: 'join', name: currentUser, oderId: peer.id, spectator: isSpectator });
       });
       
       conn.on('error', () => {
-        becomeHost();
+        if (!connected) becomeHost();
       });
       
+      // Only become host if truly no connection after 6s (increased from 3s for slow EC network)
       setTimeout(() => {
-        if (connections.size === 0) becomeHost();
-      }, 3000);
+        if (!connected && connections.size === 0 && !isHost) becomeHost();
+      }, 6000);
     }
 
     function becomeHost() {
