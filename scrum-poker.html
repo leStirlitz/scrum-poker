@@ -251,7 +251,16 @@
 
     function initPeer() {
       const oderId = `scrumpoker-${currentRoom}-${currentUser}-${Date.now()}`;
-      peer = new Peer(oderId);
+      // Use explicit STUN servers on port 443 (HTTPS) to work through EC corporate network/proxy
+      peer = new Peer(oderId, {
+        config: {
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun.cloudflare.com:3478' }
+          ]
+        }
+      });
       
       peer.on('open', (id) => {
         updateConnectionStatus(true);
@@ -320,7 +329,15 @@
       // Remove the stale entry added under the temporary random peer ID
       if (peer && peer.id) delete gameState.users[peer.id];
       peer.destroy();
-      peer = new Peer(`scrumpoker-${currentRoom}-host`);
+      peer = new Peer(`scrumpoker-${currentRoom}-host`, {
+        config: {
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun.cloudflare.com:3478' }
+          ]
+        }
+      });
       
       peer.on('open', (id) => {
         updateConnectionStatus(true);
