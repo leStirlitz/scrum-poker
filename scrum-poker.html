@@ -295,6 +295,7 @@
     }
 
     let hostConnAttempt = null;
+    let hostExists = false; // set true when we know a host is running
 
     function tryConnectToHost() {
       const hostId = `scrumpoker-${currentRoom}-host`;
@@ -310,13 +311,13 @@
       });
       
       conn.on('error', (err) => {
-        // Connection error — host unreachable, become host (only if not already host)
-        if (!connected && !isHost) becomeHost();
+        // Connection error — host unreachable, become host (only if we don't know one exists)
+        if (!connected && !isHost && !hostExists) becomeHost();
       });
       
-      // Fallback: if no connection after 3s, become host
+      // Fallback: if no connection after 3s, become host (only if we don't know one exists)
       setTimeout(() => {
-        if (!connected && connections.size === 0 && !isHost) becomeHost();
+        if (!connected && connections.size === 0 && !isHost && !hostExists) becomeHost();
       }, 3000);
     }
 
@@ -366,6 +367,7 @@
           // Host ID already taken — there IS a host. Fall back to guest mode.
           console.log('Host ID taken — another host exists. Reconnecting as guest...');
           isHost = false;
+          hostExists = true;
           peer.destroy();
           showNotification('Connecting to existing host...');
           setTimeout(() => initPeer(), 1000);
