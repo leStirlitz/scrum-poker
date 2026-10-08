@@ -330,7 +330,18 @@
       });
       
       peer.on('connection', handleConnection);
-      peer.on('error', (err) => console.log('Host error:', err));
+      
+      peer.on('error', (err) => {
+        console.log('Host error:', err.type, err);
+        if (err.type === 'unavailable-id') {
+          // Host ID already taken — there IS a host. Fall back to guest mode.
+          console.log('Host ID taken — another host exists. Reconnecting as guest...');
+          isHost = false;
+          peer.destroy();
+          showNotification('Connecting to existing host...');
+          setTimeout(() => initPeer(), 1000);
+        }
+      });
     }
 
     function handleConnection(conn) {
