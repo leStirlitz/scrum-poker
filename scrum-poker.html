@@ -332,7 +332,15 @@
       
       // Remove the stale entry added under the temporary random peer ID
       if (peer && peer.id) delete gameState.users[peer.id];
-      peer.destroy();
+      
+      // Remove all listeners before destroying to prevent PeerJS internal reconnect bug
+      const oldPeer = peer;
+      peer = null;
+      try {
+        oldPeer.removeAllListeners();
+        oldPeer.destroy();
+      } catch(e) { console.log('Old peer cleanup:', e.message); }
+      
       peer = new Peer(`scrumpoker-${currentRoom}-host`, {
         config: {
           iceServers: [
