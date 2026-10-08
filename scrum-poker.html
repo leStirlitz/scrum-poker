@@ -276,9 +276,8 @@
       peer.on('error', (err) => {
         console.log('Peer error:', err.type);
         if (err.type === 'peer-unavailable') {
-          // Don't immediately become host — the signalling server may be slow.
-          // Only become host if we haven't connected to anyone after the timeout in tryConnectToHost.
-          console.log('Host peer not found yet, waiting for timeout...');
+          // Host not found — become host
+          becomeHost();
         }
       });
       
@@ -308,18 +307,14 @@
       });
       
       conn.on('error', (err) => {
-        // Log but don't immediately become host — let the timeout decide
-        console.log('Connection to host error:', err);
+        // Connection error — host unreachable, become host
+        if (!connected) becomeHost();
       });
       
-      // Become host only if no connection established after 8s
-      // (generous for EC proxy + PeerJS signalling latency)
+      // Fallback: if no connection after 3s, become host
       setTimeout(() => {
-        if (!connected && connections.size === 0 && !isHost) {
-          console.log('No host found after 8s — becoming host');
-          becomeHost();
-        }
-      }, 8000);
+        if (!connected && connections.size === 0 && !isHost) becomeHost();
+      }, 3000);
     }
 
     function becomeHost() {
