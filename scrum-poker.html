@@ -294,20 +294,24 @@
       });
     }
 
+    let hostConnAttempt = null;
+
     function tryConnectToHost() {
       const hostId = `scrumpoker-${currentRoom}-host`;
       const conn = peer.connect(hostId, { reliable: true });
+      hostConnAttempt = conn;
       let connected = false;
       
       conn.on('open', () => {
         connected = true;
+        hostConnAttempt = null;
         handleConnection(conn);
         conn.send({ type: 'join', name: currentUser, oderId: peer.id, spectator: isSpectator });
       });
       
       conn.on('error', (err) => {
-        // Connection error — host unreachable, become host
-        if (!connected) becomeHost();
+        // Connection error — host unreachable, become host (only if not already host)
+        if (!connected && !isHost) becomeHost();
       });
       
       // Fallback: if no connection after 3s, become host
@@ -319,6 +323,12 @@
     function becomeHost() {
       if (isHost) return;
       isHost = true;
+      
+      // Close any pending host connection attempt to prevent stale callbacks
+      if (hostConnAttempt) {
+        try { hostConnAttempt.close(); } catch(e) {}
+        hostConnAttempt = null;
+      }
       
       // Remove the stale entry added under the temporary random peer ID
       if (peer && peer.id) delete gameState.users[peer.id];
