@@ -367,6 +367,7 @@
         case 'join':
           gameState.users[data.oderId] = { name: data.name, vote: null, oderId: data.oderId, spectator: !!data.spectator };
           showNotification(data.name + (data.spectator ? ' joined as spectator' : ' joined'));
+          render();
           broadcastState();
           break;
         case 'vote':
@@ -380,6 +381,10 @@
           if (!gameState.history) gameState.history = [];
           if (!gameState.users[peer.id]) {
             gameState.users[peer.id] = { name: currentUser, vote: null, oderId: peer.id };
+            // Re-announce ourselves in case our join message was lost
+            connections.forEach(c => {
+              if (c.open) c.send({ type: 'join', name: currentUser, oderId: peer.id, spectator: isSpectator });
+            });
           }
           render();
           break;
