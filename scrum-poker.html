@@ -258,6 +258,8 @@
       initPeer();
     }
 
+    let hostExists = false;
+
     function initPeer() {
       const oderId = `scrumpoker-${currentRoom}-${currentUser}-${Date.now()}`;
       peer = new Peer(oderId);
@@ -276,7 +278,7 @@
       peer.on('error', (err) => {
         console.log('Peer error:', err.type);
         if (err.type === 'peer-unavailable') {
-          becomeHost();
+          if (!hostExists) becomeHost();
         }
       });
       
@@ -296,11 +298,11 @@
       });
       
       conn.on('error', () => {
-        becomeHost();
+        if (!hostExists) becomeHost();
       });
       
       setTimeout(() => {
-        if (connections.size === 0) becomeHost();
+        if (connections.size === 0 && !hostExists) becomeHost();
       }, 3000);
     }
 
@@ -326,10 +328,13 @@
       peer.on('error', (err) => {
         console.log('Host error:', err.type);
         if (err.type === 'unavailable-id') {
-          // Host already exists — reuse current peer to connect as guest
+          hostExists = true;
           isHost = false;
           showNotification('Connecting to existing host...');
-          setTimeout(() => tryConnectToHost(), 500);
+          if (peer && !peer.destroyed) {
+            try { peer.destroy(); } catch(e) {}
+          }
+          setTimeout(() => initPeer(), 500);
         }
       });
     }
