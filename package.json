@@ -1,12 +1,14 @@
 {
-  "dependencies": {
-    "fast-check": "^2.25.0"
-  },
-  "devDependencies": {
-    "peer": "^1.0.2"
-  },
+  "name": "scrum-poker-peer-server",
+  "version": "1.0.0",
+  "description": "PeerJS signaling server for EC Scrum Poker",
+  "main": "peer-server.js",
   "scripts": {
-    "peer-server": "node peer-server.js",
+    "start": "node peer-server.js",
     "test-server": "python test-server.py"
+  },
+  "dependencies": {
+    "fast-check": "^2.25.0",
+    "peer": "^1.0.2"
   }
 }
