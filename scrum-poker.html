@@ -274,6 +274,8 @@
       isSpectator = document.getElementById('spectator-checkbox').checked;
       
       if (!currentUser || !currentRoom) return;
+      // Restore history for this room from localStorage
+      gameState.history = loadHistoryFromStorage(currentRoom);
       
       joinScreen.classList.add('hidden');
       gameScreen.classList.remove('hidden');
@@ -405,6 +407,7 @@
         case 'state':
           gameState = data.state;
           if (!gameState.history) gameState.history = [];
+          if (currentRoom && gameState.history.length > 0) saveHistoryToStorage(currentRoom, gameState.history);
           if (!gameState.users[peer.id]) {
             gameState.users[peer.id] = { name: currentUser, vote: null, oderId: peer.id, spectator: isSpectator };
           }
@@ -685,6 +688,7 @@
         
         if (!gameState.history) gameState.history = [];
         gameState.history.unshift(historyItem);
+        saveHistoryToStorage(currentRoom, gameState.history);
         
         showNotification(`Saved: ${historyItem.story} â†’ ${finalEstimate}`);
       }
