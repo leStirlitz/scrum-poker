@@ -262,7 +262,29 @@
 
     function initPeer() {
       const oderId = `scrumpoker-${currentRoom}-${currentUser}-${Date.now()}`;
-      peer = new Peer(oderId);
+      peer = new Peer(oderId, {
+        config: {
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            {
+              urls: 'turn:openrelay.metered.ca:80',
+              username: 'openrelayproject',
+              credential: 'openrelayproject'
+            },
+            {
+              urls: 'turn:openrelay.metered.ca:443',
+              username: 'openrelayproject',
+              credential: 'openrelayproject'
+            },
+            {
+              urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+              username: 'openrelayproject',
+              credential: 'openrelayproject'
+            }
+          ]
+        }
+      });
       
       peer.on('open', (id) => {
         updateConnectionStatus(true);
@@ -315,7 +337,29 @@
       // when destroy() is called while a connection attempt is in flight.
       // Just orphan it and create the host peer alongside it.
       
-      peer = new Peer(`scrumpoker-${currentRoom}-host`);
+      peer = new Peer(`scrumpoker-${currentRoom}-host`, {
+        config: {
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            {
+              urls: 'turn:openrelay.metered.ca:80',
+              username: 'openrelayproject',
+              credential: 'openrelayproject'
+            },
+            {
+              urls: 'turn:openrelay.metered.ca:443',
+              username: 'openrelayproject',
+              credential: 'openrelayproject'
+            },
+            {
+              urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+              username: 'openrelayproject',
+              credential: 'openrelayproject'
+            }
+          ]
+        }
+      });
       
       peer.on('open', (id) => {
         updateConnectionStatus(true);
