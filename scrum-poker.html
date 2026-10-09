@@ -307,7 +307,10 @@
         connected = true;
         hostConnAttempt = null;
         handleConnection(conn);
-        conn.send({ type: 'join', name: currentUser, oderId: peer.id, spectator: isSpectator });
+        // Delay join slightly to ensure host has registered data listener
+        setTimeout(() => {
+          conn.send({ type: 'join', name: currentUser, oderId: peer.id, spectator: isSpectator });
+        }, 300);
       });
       
       conn.on('error', (err) => {
