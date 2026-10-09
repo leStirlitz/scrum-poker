@@ -215,6 +215,18 @@
     const historyCount = document.getElementById('history-count');
     const notificationsEl = document.getElementById('notifications');
 
+    // PeerJS server config
+    // When served from any real host (localhost, LAN IP, VPN IP) use that same host on port 9000.
+    // Exception: GitHub Pages — fall back to PeerJS cloud since we can't run a server there.
+    const PEER_CONFIG = (() => {
+      const h = window.location.hostname;
+      if (h && !h.endsWith('.github.io')) {
+        return { host: h, port: 9000, path: '/', key: 'peerjs', secure: false };
+      }
+      return {}; // GitHub Pages: PeerJS cloud
+    })();
+    function makePeer(id) { return new Peer(id, PEER_CONFIG); }
+
     // Prevent PeerJS internal reconnect errors from crashing the page
     window.addEventListener('unhandledrejection', (e) => e.preventDefault());
     window.addEventListener('error', (e) => {
@@ -262,7 +274,7 @@
 
     function initPeer() {
       const oderId = `scrumpoker-${currentRoom}-${currentUser}-${Date.now()}`;
-      peer = new Peer(oderId);
+      peer = makePeer(oderId);
       
       peer.on('open', (id) => {
         updateConnectionStatus(true);
@@ -312,7 +324,7 @@
       
       if (peer && peer.id) delete gameState.users[peer.id];
       peer.destroy();
-      peer = new Peer(`scrumpoker-${currentRoom}-host`);
+      peer = makePeer(`scrumpoker-${currentRoom}-host`);
       
       peer.on('open', (id) => {
         updateConnectionStatus(true);
