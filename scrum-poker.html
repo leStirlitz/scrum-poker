@@ -262,29 +262,7 @@
 
     function initPeer() {
       const oderId = `scrumpoker-${currentRoom}-${currentUser}-${Date.now()}`;
-      peer = new Peer(oderId, {
-        config: {
-          iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' },
-            {
-              urls: 'turn:openrelay.metered.ca:80',
-              username: 'openrelayproject',
-              credential: 'openrelayproject'
-            },
-            {
-              urls: 'turn:openrelay.metered.ca:443',
-              username: 'openrelayproject',
-              credential: 'openrelayproject'
-            },
-            {
-              urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-              username: 'openrelayproject',
-              credential: 'openrelayproject'
-            }
-          ]
-        }
-      });
+      peer = new Peer(oderId);
       
       peer.on('open', (id) => {
         updateConnectionStatus(true);
@@ -299,38 +277,32 @@
       
       peer.on('error', (err) => {
         console.log('Peer error:', err.type);
-        if (err.type === 'peer-unavailable') {
-          if (!hostExists && !isHost) becomeHost();
+        if (err.type === 'peer-unavailable' && !isHost && !hostExists) {
+          becomeHost();
         }
       });
       
       peer.on('disconnected', () => {
         updateConnectionStatus(false);
-        // Only reconnect if we haven't become host yet
-        if (!isHost) {
-          setTimeout(() => { if (!peer.destroyed) peer.reconnect(); }, 1000);
-        }
+        if (!isHost) setTimeout(() => { if (!peer.destroyed) peer.reconnect(); }, 1000);
       });
     }
 
     function tryConnectToHost() {
       const hostId = `scrumpoker-${currentRoom}-host`;
-      console.log('Trying to connect to host:', hostId);
       const conn = peer.connect(hostId, { reliable: true });
       
       conn.on('open', () => {
-        console.log('Connection to host OPENED - sending join');
         handleConnection(conn);
         conn.send({ type: 'join', name: currentUser, oderId: peer.id, spectator: isSpectator });
       });
       
-      conn.on('error', (err) => {
-        console.log('Connection to host ERROR:', err);
-        if (!hostExists) becomeHost();
+      conn.on('error', () => {
+        if (!isHost && !hostExists) becomeHost();
       });
       
       setTimeout(() => {
-        if (connections.size === 0 && !hostExists) becomeHost();
+        if (connections.size === 0 && !isHost && !hostExists) becomeHost();
       }, 3000);
     }
 
@@ -338,64 +310,33 @@
       if (isHost) return;
       isHost = true;
       
-      const oldPeer = peer;
-      if (oldPeer && oldPeer.id) delete gameState.users[oldPeer.id];
-      peer = null;
-      
-      peer = new Peer(`scrumpoker-${currentRoom}-host`, {
-        config: {
-          iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' },
-            {
-              urls: 'turn:openrelay.metered.ca:80',
-              username: 'openrelayproject',
-              credential: 'openrelayproject'
-            },
-            {
-              urls: 'turn:openrelay.metered.ca:443',
-              username: 'openrelayproject',
-              credential: 'openrelayproject'
-            },
-            {
-              urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-              username: 'openrelayproject',
-              credential: 'openrelayproject'
-            }
-          ]
-        }
-      });
+      if (peer && peer.id) delete gameState.users[peer.id];
+      peer.destroy();
+      peer = new Peer(`scrumpoker-${currentRoom}-host`);
       
       peer.on('open', (id) => {
         updateConnectionStatus(true);
         gameState.users[id] = { name: currentUser, vote: null, oderId: id, spectator: isSpectator };
-        // Now safe to destroy old peer — host is fully registered
-        if (oldPeer && !oldPeer.destroyed) {
-          try { oldPeer.destroy(); } catch(e) {}
-        }
         render();
         showNotification('You are the host');
       });
       
       peer.on('connection', handleConnection);
+      
       peer.on('error', (err) => {
         console.log('Host error:', err.type);
         if (err.type === 'unavailable-id') {
           hostExists = true;
           isHost = false;
-          showNotification('Connecting to existing host...');
-          if (peer && !peer.destroyed) {
-            try { peer.destroy(); } catch(e) {}
-          }
-          setTimeout(() => initPeer(), 1500);
+          peer.destroy();
+          showNotification('Joining existing session...');
+          setTimeout(() => initPeer(), 500);
         }
       });
     }
 
     function handleConnection(conn) {
-      console.log('handleConnection called, isHost:', isHost, 'peer:', conn.peer);
       connections.set(conn.peer, conn);
-      
       conn.on('data', (data) => handleMessage(data, conn));
       conn.on('close', () => {
         connections.delete(conn.peer);
@@ -403,25 +344,18 @@
         render();
         broadcastState();
       });
-      
       if (isHost) {
-        setTimeout(() => {
-          conn.send({ type: 'state', state: gameState });
-        }, 500);
+        setTimeout(() => { conn.send({ type: 'state', state: gameState }); }, 500);
       }
     }
 
     function broadcastState() {
       const msg = { type: 'state', state: gameState };
-      connections.forEach(conn => {
-        if (conn.open) conn.send(msg);
-      });
+      connections.forEach(conn => { if (conn.open) conn.send(msg); });
     }
 
     function broadcast(msg) {
-      connections.forEach(conn => {
-        if (conn.open) conn.send(msg);
-      });
+      connections.forEach(conn => { if (conn.open) conn.send(msg); });
     }
 
     function handleMessage(data, conn) {
