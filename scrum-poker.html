@@ -215,6 +215,15 @@
     const historyCount = document.getElementById('history-count');
     const notificationsEl = document.getElementById('notifications');
 
+    // Prevent PeerJS internal reconnect errors from crashing the page
+    window.addEventListener('unhandledrejection', (e) => e.preventDefault());
+    window.addEventListener('error', (e) => {
+      if (e.message && e.message.includes('cannot reconnect')) {
+        e.preventDefault();
+        console.log('PeerJS reconnect error suppressed');
+      }
+    });
+
     function init() {
       renderCards();
       joinForm.addEventListener('submit', handleJoin);
@@ -300,7 +309,10 @@
       isHost = true;
       
       if (peer && peer.id) delete gameState.users[peer.id];
-      peer.destroy();
+      const oldPeer = peer;
+      // Delay destroy to let in-flight connection attempts settle
+      setTimeout(() => { try { oldPeer.destroy(); } catch(e) {} }, 100);
+      
       peer = new Peer(`scrumpoker-${currentRoom}-host`);
       
       peer.on('open', (id) => {
