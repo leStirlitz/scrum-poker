@@ -312,14 +312,17 @@
 
     function tryConnectToHost() {
       const hostId = `scrumpoker-${currentRoom}-host`;
+      console.log('Trying to connect to host:', hostId);
       const conn = peer.connect(hostId, { reliable: true });
       
       conn.on('open', () => {
+        console.log('Connection to host OPENED - sending join');
         handleConnection(conn);
         conn.send({ type: 'join', name: currentUser, oderId: peer.id, spectator: isSpectator });
       });
       
-      conn.on('error', () => {
+      conn.on('error', (err) => {
+        console.log('Connection to host ERROR:', err);
         if (!hostExists) becomeHost();
       });
       
@@ -384,6 +387,7 @@
     }
 
     function handleConnection(conn) {
+      console.log('handleConnection called, isHost:', isHost, 'peer:', conn.peer);
       connections.set(conn.peer, conn);
       
       conn.on('data', (data) => handleMessage(data, conn));
