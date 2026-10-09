@@ -306,7 +306,10 @@
       
       peer.on('disconnected', () => {
         updateConnectionStatus(false);
-        setTimeout(() => peer.reconnect(), 1000);
+        // Only reconnect if we haven't become host yet
+        if (!isHost) {
+          setTimeout(() => { if (!peer.destroyed) peer.reconnect(); }, 1000);
+        }
       });
     }
 
