@@ -335,10 +335,9 @@
       if (isHost) return;
       isHost = true;
       
-      if (peer && peer.id) delete gameState.users[peer.id];
-      // Don't destroy the old peer — PeerJS 1.5.x throws uncaught errors
-      // when destroy() is called while a connection attempt is in flight.
-      // Just orphan it and create the host peer alongside it.
+      const oldPeer = peer;
+      if (oldPeer && oldPeer.id) delete gameState.users[oldPeer.id];
+      peer = null;
       
       peer = new Peer(`scrumpoker-${currentRoom}-host`, {
         config: {
@@ -367,6 +366,10 @@
       peer.on('open', (id) => {
         updateConnectionStatus(true);
         gameState.users[id] = { name: currentUser, vote: null, oderId: id, spectator: isSpectator };
+        // Now safe to destroy old peer — host is fully registered
+        if (oldPeer && !oldPeer.destroyed) {
+          try { oldPeer.destroy(); } catch(e) {}
+        }
         render();
         showNotification('You are the host');
       });
