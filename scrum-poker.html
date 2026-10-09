@@ -251,16 +251,7 @@
 
     function initPeer() {
       const oderId = `scrumpoker-${currentRoom}-${currentUser}-${Date.now()}`;
-      // Use explicit STUN servers on port 443 (HTTPS) to work through EC corporate network/proxy
-      peer = new Peer(oderId, {
-        config: {
-          iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' },
-            { urls: 'stun:stun.cloudflare.com:3478' }
-          ]
-        }
-      });
+      peer = new Peer(oderId);
       
       peer.on('open', (id) => {
         updateConnectionStatus(true);
@@ -276,51 +267,31 @@
       peer.on('error', (err) => {
         console.log('Peer error:', err.type);
         if (err.type === 'peer-unavailable') {
-          // Only non-hosts should become host when no host is found
-          if (!isHost) becomeHost();
+          becomeHost();
         }
       });
       
       peer.on('disconnected', () => {
         updateConnectionStatus(false);
-        setTimeout(() => {
-          if (!peer.destroyed) {
-            peer.reconnect();
-            if (!isHost) {
-              setTimeout(() => tryConnectToHost(), 1000);
-            }
-          }
-        }, 1000);
+        setTimeout(() => peer.reconnect(), 1000);
       });
     }
-
-    let hostConnAttempt = null;
-    let hostExists = false; // set true when we know a host is running
 
     function tryConnectToHost() {
       const hostId = `scrumpoker-${currentRoom}-host`;
       const conn = peer.connect(hostId, { reliable: true });
-      hostConnAttempt = conn;
-      let connected = false;
       
       conn.on('open', () => {
-        connected = true;
-        hostConnAttempt = null;
         handleConnection(conn);
-        // Delay join slightly to ensure host has registered data listener
-        setTimeout(() => {
-          conn.send({ type: 'join', name: currentUser, oderId: peer.id, spectator: isSpectator });
-        }, 300);
+        conn.send({ type: 'join', name: currentUser, oderId: peer.id, spectator: isSpectator });
       });
       
-      conn.on('error', (err) => {
-        // Connection error — host unreachable, become host (only if we don't know one exists)
-        if (!connected && !isHost && !hostExists) becomeHost();
+      conn.on('error', () => {
+        becomeHost();
       });
       
-      // Fallback: if no connection after 3s, become host (only if we don't know one exists)
       setTimeout(() => {
-        if (!connected && connections.size === 0 && !isHost && !hostExists) becomeHost();
+        if (connections.size === 0) becomeHost();
       }, 3000);
     }
 
@@ -328,18 +299,8 @@
       if (isHost) return;
       isHost = true;
       
-      // Close any pending host connection attempt to prevent stale callbacks
-      if (hostConnAttempt) {
-        try { hostConnAttempt.close(); } catch(e) {}
-        hostConnAttempt = null;
-      }
-      
-      // Remove the stale entry added under the temporary random peer ID
       if (peer && peer.id) delete gameState.users[peer.id];
-      
-      // Destroy the old peer cleanly
-      try { peer.destroy(); } catch(e) {}
-      
+      peer.destroy();
       peer = new Peer(`scrumpoker-${currentRoom}-host`);
       
       peer.on('open', (id) => {
@@ -350,19 +311,7 @@
       });
       
       peer.on('connection', handleConnection);
-      
-      peer.on('error', (err) => {
-        console.log('Host error:', err.type, err);
-        if (err.type === 'unavailable-id') {
-          // Host ID already taken — there IS a host. Fall back to guest mode.
-          console.log('Host ID taken — another host exists. Reconnecting as guest...');
-          isHost = false;
-          hostExists = true;
-          peer.destroy();
-          showNotification('Connecting to existing host...');
-          setTimeout(() => initPeer(), 1000);
-        }
-      });
+      peer.on('error', (err) => console.log('Host error:', err.type));
     }
 
     function handleConnection(conn) {
@@ -388,7 +337,6 @@
         case 'join':
           gameState.users[data.oderId] = { name: data.name, vote: null, oderId: data.oderId, spectator: !!data.spectator };
           showNotification(data.name + (data.spectator ? ' joined as spectator' : ' joined'));
-          render();
           broadcastState();
           break;
         case 'vote':
@@ -401,11 +349,7 @@
           gameState = data.state;
           if (!gameState.history) gameState.history = [];
           if (!gameState.users[peer.id]) {
-            gameState.users[peer.id] = { name: currentUser, vote: null, oderId: peer.id };
-            // Re-announce ourselves in case our join message was lost
-            connections.forEach(c => {
-              if (c.open) c.send({ type: 'join', name: currentUser, oderId: peer.id, spectator: isSpectator });
-            });
+            gameState.users[peer.id] = { name: currentUser, vote: null, oderId: peer.id, spectator: isSpectator };
           }
           render();
           break;
@@ -423,19 +367,6 @@
           break;
       }
       render();
-    }
-
-    function broadcastState() {
-      const msg = { type: 'state', state: gameState };
-      connections.forEach(conn => {
-        if (conn.open) conn.send(msg);
-      });
-    }
-
-    function broadcast(msg) {
-      connections.forEach(conn => {
-        if (conn.open) conn.send(msg);
-      });
     }
 
     function renderCards() {
