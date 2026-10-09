@@ -71,6 +71,8 @@
     .stat { text-align: center; }
     .stat-value { font-size: 2rem; font-weight: 700; color: var(--primary); }
     .stat-label { color: var(--text-light); font-size: 0.875rem; }
+    .stat-suggested .stat-value { color: var(--success); }
+    .stat-suggested .stat-label { color: var(--success); font-weight: 600; }
     
         /* Spectator mode */
     .spectator-badge { font-size: 0.7rem; background: #f59e0b; color: white; padding: 0.15rem 0.4rem; border-radius: 0.25rem; margin-left: 0.4rem; vertical-align: middle; }
@@ -530,11 +532,13 @@
       const avg = (votes.reduce((a, b) => a + b, 0) / votes.length).toFixed(1);
       const min = Math.min(...votes);
       const max = Math.max(...votes);
+      const suggested = roundToFibonacci(parseFloat(avg));
       
       resultsStats.innerHTML = `
         <div class="stat"><div class="stat-value">${avg}</div><div class="stat-label">Average</div></div>
         <div class="stat"><div class="stat-value">${min}</div><div class="stat-label">Min</div></div>
         <div class="stat"><div class="stat-value">${max}</div><div class="stat-label">Max</div></div>
+        <div class="stat stat-suggested"><div class="stat-value">${suggested}</div><div class="stat-label">Suggested</div></div>
       `;
     }
 
