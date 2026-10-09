@@ -2,7 +2,13 @@
 
 A browser-based planning poker tool for agile estimation. Single HTML file, real-time peer-to-peer sync via PeerJS (WebRTC).
 
-## Quick Start (local / LAN / VPN)
+## 🌐 Try it now
+
+**https://lestirlitz.github.io/scrum-poker/scrum-poker.html**
+
+Open the link, enter a name and room name, share the URL with your team — done. No install, no account, no server required for regular internet users.
+
+> **EC employees on corporate network:** you need the local peer server (see [Local Setup](#local-setup--ec-network) below) because the corporate proxy blocks external WebSocket connections.
 
 Open **two terminals**:
 
@@ -19,7 +25,9 @@ Open http://localhost:8080/scrum-poker.html in two browser tabs.
 First tab → enter name + room name → **Join Room** (becomes host).  
 Second tab → enter different name + **same room name** → **Join Room** (joins as guest).
 
-## Sharing with the Team (VPN)
+## Local Setup / EC Network
+
+Open **two terminals**:
 
 The person running the servers shares their VPN IP:
 
