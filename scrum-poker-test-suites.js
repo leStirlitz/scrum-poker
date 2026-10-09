@@ -176,7 +176,7 @@ suite("roundToFibonacci", function(t){
     }), {numRuns:200});
   });
   t("Unit: 18 → 21", function(){ assert(roundToFibonacci(18)===21); });
-  t("Unit: 4  → 3 or 5 (equidistant — nearest wins)", function(){ var r=roundToFibonacci(4); assert(r===3||r===5); });
+  t("Unit: 4  → 5 (equidistant rounds up)", function(){ assert(roundToFibonacci(4)===5); });
   t("Unit: 6  → 5", function(){ assert(roundToFibonacci(6)===5); });
   t("Unit: 7  → 8", function(){ assert(roundToFibonacci(7)===8); });
   t("Unit: 0  → 0", function(){ assert(roundToFibonacci(0)===0); });
