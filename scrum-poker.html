@@ -323,7 +323,15 @@
       });
       
       peer.on('connection', handleConnection);
-      peer.on('error', (err) => console.log('Host error:', err.type));
+      peer.on('error', (err) => {
+        console.log('Host error:', err.type);
+        if (err.type === 'unavailable-id') {
+          // Host already exists — reuse current peer to connect as guest
+          isHost = false;
+          showNotification('Connecting to existing host...');
+          setTimeout(() => tryConnectToHost(), 500);
+        }
+      });
     }
 
     function handleConnection(conn) {
