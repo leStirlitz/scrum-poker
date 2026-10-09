@@ -309,9 +309,9 @@
       isHost = true;
       
       if (peer && peer.id) delete gameState.users[peer.id];
-      const oldPeer = peer;
-      // Delay destroy to let in-flight connection attempts settle
-      setTimeout(() => { try { oldPeer.destroy(); } catch(e) {} }, 100);
+      // Don't destroy the old peer — PeerJS 1.5.x throws uncaught errors
+      // when destroy() is called while a connection attempt is in flight.
+      // Just orphan it and create the host peer alongside it.
       
       peer = new Peer(`scrumpoker-${currentRoom}-host`);
       
