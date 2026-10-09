@@ -401,6 +401,19 @@
       }
     }
 
+    function broadcastState() {
+      const msg = { type: 'state', state: gameState };
+      connections.forEach(conn => {
+        if (conn.open) conn.send(msg);
+      });
+    }
+
+    function broadcast(msg) {
+      connections.forEach(conn => {
+        if (conn.open) conn.send(msg);
+      });
+    }
+
     function handleMessage(data, conn) {
       switch(data.type) {
         case 'join':
