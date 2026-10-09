@@ -1,16 +1,18 @@
 /**
- * Local PeerJS signaling server for development.
+ * PeerJS signaling server — works locally AND on cloud hosts (Render, Railway, etc.)
  *
- * Usage:  node scrum-poker/peer-server.js
- *         (from workspace root, or just: node peer-server.js from inside scrum-poker/)
+ * Local dev:
+ *   node scrum-poker/peer-server.js
+ *   → listens on port 9000
  *
- * Then open two tabs at http://localhost:8080/scrum-poker.html
- * The app auto-detects localhost and routes PeerJS through this server instead of the cloud.
+ * Cloud (Render / Railway):
+ *   Set start command to: node peer-server.js
+ *   The host injects PORT via environment variable automatically.
  */
 
 const { PeerServer } = require('peer');
 
-const PORT = 9000;
+const PORT = process.env.PORT || 9000;
 
 const server = PeerServer({
   port: PORT,
@@ -27,7 +29,4 @@ server.on('disconnect', (client) => {
   console.log(`[peer] disconnect: ${client.getId()}`);
 });
 
-console.log(`PeerJS server listening on http://localhost:${PORT}/`);
-console.log('Now start the HTTP server in a second terminal:');
-console.log('  python scrum-poker/test-server.py');
-console.log('Then open: http://localhost:8080/scrum-poker.html');
+console.log(`PeerJS server listening on port ${PORT}`);
