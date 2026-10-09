@@ -58,7 +58,7 @@ function getVotersForCard(users, cardValue) {
 function roundToFibonacci(value) {
   const fibs = [0, 1, 2, 3, 5, 8, 13, 21, 34];
   return fibs.reduce((prev, curr) =>
-    Math.abs(curr - value) < Math.abs(prev - value) ? curr : prev
+    Math.abs(curr - value) <= Math.abs(prev - value) ? curr : prev
   );
 }
 
