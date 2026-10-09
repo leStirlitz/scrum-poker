@@ -337,23 +337,10 @@
       // Remove the stale entry added under the temporary random peer ID
       if (peer && peer.id) delete gameState.users[peer.id];
       
-      // Remove all listeners before destroying to prevent PeerJS internal reconnect bug
-      const oldPeer = peer;
-      peer = null;
-      try {
-        oldPeer.removeAllListeners();
-        oldPeer.destroy();
-      } catch(e) { console.log('Old peer cleanup:', e.message); }
+      // Destroy the old peer cleanly
+      try { peer.destroy(); } catch(e) {}
       
-      peer = new Peer(`scrumpoker-${currentRoom}-host`, {
-        config: {
-          iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' },
-            { urls: 'stun:stun.cloudflare.com:3478' }
-          ]
-        }
-      });
+      peer = new Peer(`scrumpoker-${currentRoom}-host`);
       
       peer.on('open', (id) => {
         updateConnectionStatus(true);
