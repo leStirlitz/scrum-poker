@@ -300,7 +300,7 @@
       peer.on('error', (err) => {
         console.log('Peer error:', err.type);
         if (err.type === 'peer-unavailable') {
-          if (!hostExists) becomeHost();
+          if (!hostExists && !isHost) becomeHost();
         }
       });
       
