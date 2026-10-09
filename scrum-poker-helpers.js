@@ -50,6 +50,19 @@ function getVotersForCard(users, cardValue) {
 }
 
 /**
+ * Round a numeric value to the nearest Fibonacci card in the deck.
+ * Ties (equidistant between two Fibonacci numbers) round up.
+ * @param {number} value
+ * @returns {number}
+ */
+function roundToFibonacci(value) {
+  const fibs = [0, 1, 2, 3, 5, 8, 13, 21, 34];
+  return fibs.reduce((prev, curr) =>
+    Math.abs(curr - value) < Math.abs(prev - value) ? curr : prev
+  );
+}
+
+/**
  * Compute vote statistics from an array of vote strings.
  * Non-numeric values (?, ☕) are excluded.
  * Property 5: avg/min/max match manual calculation.
