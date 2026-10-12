@@ -341,12 +341,13 @@
       });
       
       conn.on('error', () => {
-        if (!isHost && !hostExists) becomeHost();
+        // Delay to give TURN ICE negotiation time before giving up
+        setTimeout(() => { if (!isHost && !hostExists) becomeHost(); }, 3000);
       });
       
       setTimeout(() => {
         if (connections.size === 0 && !isHost && !hostExists) becomeHost();
-      }, 3000);
+      }, 10000);
     }
 
     function becomeHost() {
