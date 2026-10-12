@@ -232,10 +232,18 @@
     // Exception: GitHub Pages — fall back to PeerJS cloud since we can't run a server there.
     const PEER_CONFIG = (() => {
       const h = window.location.hostname;
+      // TURN servers enable relay when direct WebRTC fails (VPN-to-VPN, corporate NAT)
+      const iceServers = [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'turn:openrelay.metered.ca:80',                username: 'openrelayproject', credential: 'openrelayproject' },
+        { urls: 'turn:openrelay.metered.ca:443',               username: 'openrelayproject', credential: 'openrelayproject' },
+        { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
+      ];
       if (h && !h.endsWith('.github.io')) {
-        return { host: h, port: 9000, path: '/', key: 'peerjs', secure: false };
+        return { host: h, port: 9000, path: '/', key: 'peerjs', secure: false, config: { iceServers } };
       }
-      return {}; // GitHub Pages: PeerJS cloud
+      return { config: { iceServers } }; // GitHub Pages: PeerJS cloud + our TURN
     })();
     function makePeer(id) { return new Peer(id, PEER_CONFIG); }
 
@@ -312,7 +320,8 @@
       peer.on('error', (err) => {
         console.log('Peer error:', err.type);
         if (err.type === 'peer-unavailable' && !isHost && !hostExists) {
-          becomeHost();
+          // Small delay to avoid reacting to transient host drops (e.g. browser reconnecting)
+          setTimeout(() => { if (!isHost && !hostExists) becomeHost(); }, 2000);
         }
       });
       
