@@ -605,7 +605,8 @@
         var voteCounts = {};
         votes.forEach(function(v) { voteCounts[v.vote] = (voteCounts[v.vote] || 0) + 1; });
         var sortedVotes = Object.entries(voteCounts).sort(function(a, b) { return b[1] - a[1]; });
-        var finalEstimate = sortedVotes.length > 0 ? sortedVotes[0][0] : avg;
+        // Use the Fibonacci-rounded average (same as "Suggested" shown in the UI)
+        var finalEstimate = avg !== '?' ? String(roundToFibonacci(parseFloat(avg))) : avg;
 
         var historyItem = {
           story:         gameState.currentStory || 'Unnamed story',
