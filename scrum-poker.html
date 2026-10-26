@@ -523,11 +523,23 @@
     function handleStoryChange() {
       var val = storyInput.value.trim();
       if (!val || !isHost) return;
-      gameState.currentStory = val;  // optimistic
+
+      // Setting a new story always means a clean slate:
+      // clear revealed and all votes atomically so no stale state leaks through.
+      gameState.currentStory = val;
+      gameState.revealed = false;
+      Object.values(gameState.users).forEach(function(u) { u.vote = null; });
       storyInput.value = '';
       storyInput.placeholder = 'Enter story/ticket to estimate (e.g., SEARCH-1234)...';
       render();
-      db.ref('rooms/' + currentRoom + '/currentStory').set(val);
+
+      var updates = {};
+      updates['rooms/' + currentRoom + '/currentStory'] = val;
+      updates['rooms/' + currentRoom + '/revealed']     = false;
+      Object.keys(gameState.users).forEach(function(uid) {
+        updates['rooms/' + currentRoom + '/users/' + uid + '/vote'] = null;
+      });
+      db.ref().update(updates);
     }
 
     function handleReveal() {
