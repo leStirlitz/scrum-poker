@@ -523,13 +523,17 @@
     function handleStoryChange() {
       var val = storyInput.value.trim();
       if (!val || !isHost) return;
+      gameState.currentStory = val;  // optimistic
       storyInput.value = '';
       storyInput.placeholder = 'Enter story/ticket to estimate (e.g., SEARCH-1234)...';
+      render();
       db.ref('rooms/' + currentRoom + '/currentStory').set(val);
     }
 
     function handleReveal() {
       if (!isFacilitator()) return;
+      gameState.revealed = true;  // optimistic
+      render();
       db.ref('rooms/' + currentRoom + '/revealed').set(true);
     }
 
@@ -540,6 +544,10 @@
       Object.keys(gameState.users).forEach(function(uid) {
         updates['rooms/' + currentRoom + '/users/' + uid + '/vote'] = null;
       });
+      // Optimistic local update — don't wait for Firebase round-trip
+      gameState.revealed = false;
+      Object.values(gameState.users).forEach(function(u) { u.vote = null; });
+      render();
       db.ref().update(updates);
       showNotification('Re-vote started — same ticket');
     }
@@ -547,13 +555,18 @@
     function handleCancelTicket() {
       if (!isFacilitator()) return;
       var updates = {};
-      updates['rooms/' + currentRoom + '/currentStory'] = '';
+      updates['rooms/' + currentRoom + '/currentStory'] = null;
       updates['rooms/' + currentRoom + '/revealed']     = false;
       Object.keys(gameState.users).forEach(function(uid) {
         updates['rooms/' + currentRoom + '/users/' + uid + '/vote'] = null;
       });
+      // Optimistic local update
+      gameState.currentStory = '';
+      gameState.revealed = false;
+      Object.values(gameState.users).forEach(function(u) { u.vote = null; });
       storyInput.value = '';
       storyInput.placeholder = 'Enter story/ticket to estimate (e.g., SEARCH-1234)...';
+      render();
       db.ref().update(updates);
       showNotification('Ticket cancelled');
     }
@@ -566,7 +579,7 @@
         .map(function(u) { return { name: u.name, vote: u.vote }; });
 
       var updates = {};
-      updates['rooms/' + currentRoom + '/currentStory'] = '';
+      updates['rooms/' + currentRoom + '/currentStory'] = null;  // null = delete field
       updates['rooms/' + currentRoom + '/revealed']     = false;
       Object.keys(gameState.users).forEach(function(uid) {
         updates['rooms/' + currentRoom + '/users/' + uid + '/vote'] = null;
@@ -579,7 +592,8 @@
           : '?';
         var voteCounts = {};
         votes.forEach(function(v) { voteCounts[v.vote] = (voteCounts[v.vote] || 0) + 1; });
-        var finalEstimate = Object.entries(voteCounts).sort(function(a, b) { return b[1] - a[1]; })[0][0] || avg;
+        var sortedVotes = Object.entries(voteCounts).sort(function(a, b) { return b[1] - a[1]; });
+        var finalEstimate = sortedVotes.length > 0 ? sortedVotes[0][0] : avg;
 
         var historyItem = {
           story:         gameState.currentStory || 'Unnamed story',
@@ -591,11 +605,20 @@
         var newHistory = [historyItem].concat(gameState.history || []);
         updates['rooms/' + currentRoom + '/history'] = newHistory;
         saveHistoryToStorage(currentRoom, newHistory);
+        // Optimistic history update
+        gameState.history = newHistory;
         showNotification('Saved: ' + historyItem.story + ' \u2192 ' + finalEstimate);
       }
 
+      // Optimistic local update — unlock the story input immediately
+      gameState.currentStory = '';
+      gameState.revealed = false;
+      Object.values(gameState.users).forEach(function(u) { u.vote = null; });
       storyInput.value = '';
       storyInput.placeholder = 'Enter story/ticket to estimate (e.g., SEARCH-1234)...';
+      render();
+
+      // Persist to Firebase (other clients update via their listeners)
       db.ref().update(updates);
     }
 
